@@ -1,0 +1,56 @@
+\documentclass{amsart}
+\usepackage{mathtools,upref,siunitx,upquote,fancyvrb,xspace,color}
+\usepackage[hyphens]{url}
+\usepackage[utf8]{inputenc}
+\usepackage{esdiff}
+
+\input{FJHDef.tex}
+
+
+\usepackage{algpseudocode}
+\usepackage{algorithm, algorithmicx}
+\algnewcommand\algorithmicparam{\textbf{Parameters:}}
+\algnewcommand\PARAM{\item[\algorithmicparam]}
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\INPUT{\item[\algorithmicinput]}
+\algnewcommand\RETURN{\State \textbf{Return }}
+
+\DeclareMathOperator{\Var}{var}
+
+\begin{document}
+\title{Local Adaptive Trapezoidal Rule}
+\author{Fred J. Hickernell}
+\begin{abstract}This project is where all of the files and commands go that are needed elsewhere
+\end{abstract}
+
+\maketitle
+
+Let $\cf = \{ f:[0,1] \to \reals : \Var(f') < \infty\}$, where $\Var$ denotes the variation of the function.  Define the trapezoidal rule as
+\begin{multline}
+    T(f,\{x_i\}_{i=0}^n) := \\
+    \frac{f(x_0)+f(x_1)}{2}(x_1-x_0) + \cdots + \frac{ f(x_{n-1}) +f(x_n)}{2}(x_n - x_{n-1}).
+\end{multline}
+
+The error of the trapezoidal rule is
+\begin{equation}
+    \left \lvert \int_{\alpha}^{\beta} f(x) \, \dif x - \frac{f(\alpha)+f(\beta)}{2}(\beta - \alpha) \right \rvert \le \frac{\Var(f',[\alpha,\beta])(\beta - \alpha)^2}{8}
+\end{equation}
+
+Consider three points, $x_- < x_0 < x_+$
+\begin{align*}
+    \abs{ \frac{f(x_0) - f(x_-)}{x_0 - x_-} - \frac{f(x_+) - f(x_0)}{x_+ - x_0}} &= 
+    \abs{(x_+-x_-)f[x_-,x_0,x_+]} \\
+    & = \abs{f'(\xi_-) - f'(\xi_+)} \\
+    & \le \Var(f';[x_-,x_+])
+\end{align*}
+Define 
+\begin{multline}
+    \cc : =  \bigl\{ f \in \cf : \Var(f',[\alpha,\beta]) \\
+    \le \max\bigl( \fC(\fh_-)\fh_- f[\beta- \fh_-, \alpha, \beta],\fC(\fh_+)\fh_+ f[\alpha, \beta, \alpha + \fh_+]\bigr)  \\
+    \forall 0 \le \alpha < \beta \le 1, \fh_{\pm} \in  (\beta - \alpha, \fh_{\max}] \bigr\}
+\end{multline}
+
+\bibliographystyle{amsplain}
+\bibliography{FJH23,FJHown23}
+
+\end{document}
