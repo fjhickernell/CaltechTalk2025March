@@ -6,16 +6,24 @@
 
 \input{FJHDef.tex}
 
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}[thm]{Lemma}
 
+\usepackage{algorithm}
+%\usepackage{algorithmicx}
 \usepackage{algpseudocode}
-\usepackage{algorithm, algorithmicx}
 \algnewcommand\algorithmicparam{\textbf{Parameters:}}
 \algnewcommand\PARAM{\item[\algorithmicparam]}
 \algnewcommand\algorithmicinput{\textbf{Input:}}
 \algnewcommand\INPUT{\item[\algorithmicinput]}
-\algnewcommand\RETURN{\State \textbf{Return }}
+%\algnewcommand\INPUT{\State \textbf{Input: }}
+%\algnewcommand\algorithmicoutput{\textbf{Output:}}
+%\algnewcommand\OUTPUT{\item[\algorithmicoutput]}
+\algnewcommand\OUTPUT{\State \textbf{Output: }}
+\algnewcommand\RETURN{\State \textbf{return }}
 
 \DeclareMathOperator{\Var}{var}
+\newcommand{\oerr}{\overline{\text{err}}}
 
 \begin{document}
 \title{Local Adaptive Trapezoidal Rule}
@@ -33,22 +41,94 @@ Let $\cf = \{ f:[0,1] \to \reals : \Var(f') < \infty\}$, where $\Var$ denotes th
 
 The error of the trapezoidal rule is
 \begin{equation}
-    \left \lvert \int_{\alpha}^{\beta} f(x) \, \dif x - \frac{f(\alpha)+f(\beta)}{2}(\beta - \alpha) \right \rvert \le \frac{\Var(f',[\alpha,\beta])(\beta - \alpha)^2}{8}
+    \left \lvert \int_{\alpha}^{\beta} f(x) \, \dif x - \frac{f(\alpha)+f(\beta)}{2}(\beta - \alpha) \right \rvert \le \frac{\Var(f',[\alpha,\beta])(\beta - \alpha)^2}{8} \qquad \forall f \in \cf
 \end{equation}
 
-Consider three points, $x_- < x_0 < x_+$
+Consider three points, $x_- < x_0 < x_+$.  It follows that the second divided difference provides a lower bound on the variation of the first derivative:
 \begin{align*}
-    \abs{ \frac{f(x_0) - f(x_-)}{x_0 - x_-} - \frac{f(x_+) - f(x_0)}{x_+ - x_0}} &= 
-    \abs{(x_+-x_-)f[x_-,x_0,x_+]} \\
+	\abs{(x_+-x_-)f[x_-,x_0,x_+]}  & =
+    \abs{ \frac{f(x_0) - f(x_-)}{x_0 - x_-} - \frac{f(x_+) - f(x_0)}{x_+ - x_0}}
+    \\
     & = \abs{f'(\xi_-) - f'(\xi_+)} \\
-    & \le \Var(f';[x_-,x_+])
+    & \le \Var(f';[x_-,x_+]) \qquad \forall f \in \cf.
 \end{align*}
-Define 
+Define a cone of functions that says that this lower bound times an inflation factor provides an upper bound on the variation.   First, we define the upper bound for any $[\alpha,\beta] \subset [0,1]$ and $h_{\pm} \in  (\beta - \alpha, \fh)$:
+\begin{equation}
+	B(f,\alpha,\beta,h_-, h_+) =
+	\begin{cases}
+		\max\bigl( \fC(h_-)h_- f[\beta- h_-, \alpha, \beta],\fC(h_+)h_+ f[\alpha, \beta, \alpha + h_+]\bigr) \\
+		\hspace{20ex} 0 \le \beta- h_- < \alpha + h_+ \le 1, \\
+		\fC(h_-)h_- f[\beta- h_-, \alpha, \beta], \qquad 0 \le \beta- h_- < 1 < \alpha + h_+, \\
+		\fC(h_+)h_+ f[\alpha, \beta, \alpha + h_+]\bigr). \qquad \beta - h_- < 0 < \alpha + h_+ \le 1.
+	\end{cases}
+\end{equation}
 \begin{multline}
-    \cc : =  \bigl\{ f \in \cf : \Var(f',[\alpha,\beta]) \\
-    \le \max\bigl( \fC(\fh_-)\fh_- f[\beta- \fh_-, \alpha, \beta],\fC(\fh_+)\fh_+ f[\alpha, \beta, \alpha + \fh_+]\bigr)  \\
-    \forall 0 \le \alpha < \beta \le 1, \fh_{\pm} \in  (\beta - \alpha, \fh_{\max}] \bigr\}
+    \cc : =  \bigl\{ f \in \cf : \Var(f',[\alpha,\beta]) \le  B(\alpha,\beta,h_-, h_+) \\
+    \forall 0 \le \alpha < \beta \le 1, h_{\pm} \in  (\beta - \alpha, \fh) \bigr\}
 \end{multline}
+
+Given a partition, $\cp  = \{0 = x_0, x_1, \ldots, x_n = b\}$, let
+\[
+B_i(f,\cp) = B(f,x_{i-1},x_{i},x_{i} - x_{i-2}, x_{i+1}-x_{i-1})
+\]
+
+\begin{lem}  For all $f \in \cc$, and partitions $\cp$, $\Var(f,[x_{i-1},x_i]) \le B_i(f,\cp)$, and so
+	\begin{equation}
+		\left \lvert \int_{\alpha}^{\beta} f(x) \, \dif x - \frac{f(\alpha)+f(\beta)}{2}(\beta - \alpha) \right \rvert \le \sum_{i=1}^n \frac{B_i(f,\cp)(x_i - x_{i-1})^2}{8} \qquad \forall f \in \cf
+	\end{equation}
+
+
+	\end{lem}
+
+
+\section{Locally Adaptive Trapezoidal Rule}
+
+\begin{algorithm}[H]
+	\caption{Locally Adaptive Trapezoidal Rule \label{alg:localadapt}}
+	\begin{algorithmic}
+		\PARAM $n_0$,
+		\INPUT $f : [0,1] \to \reals$, $\varepsilon \in (0,\infty)
+
+		\OUTPUT $T$ such that $\left \lvert \int_0^1 f(x) \, \dif x - T \right \rvert \le \varepsilon$ for $f \in \cc$.
+
+		\State Let $n \leftarrow n_0$
+		\State Generate a partition $\cp = \left\{x_i = \frac{i}{n}\right \}_{i=0}^{n}$
+		\State Evaluate the function values at the nodes, $y_i = f(x_i), i=0, \ldots, n$
+		\State Compute the upper bound on the error:
+		\begin{align*}
+		\oerr_i &\leftarrow \frac{B_i(f,\cp)(x_{i} - x_{i-1})^2}{8}, \quad i = 1, \ldots, n \\
+		\oerr & \leftarrow \overline{\text{err}}_1 + \cdots + \overline{\text{err}}_n
+		\end{align*}
+
+		\While {$\overline{\text{err}} > \varepsilon$}
+			\State Choose $i_* = \argmax \overline{\text{err}}_i$
+			\State Update
+			\begin{align*}
+				n &\leftarrow  n+1 \\
+				x_{j} & \leftarrow x_{j-1}, \quad j = n, n-1, \ldots, i+1 \\
+				x_i &\leftarrow (x_{i-1}+x_i)/2 \\
+				\oerr_{j} & \leftarrow \oerr_{j-1}, \quad j = n, n-1, \ldots, i+2 \\
+				\oerr_{i+1} &\leftarrow  \frac{B_{i+1}(f,\cp)(x_{i+1} - x_{i})^2}{8} \\
+				\oerr_{i} &\leftarrow \frac{B_{i}(f,\cp)(x_{i} - x_{i-1})^2}{8}  \\
+				\oerr_{i-1} &\leftarrow \frac{B_{i-1}(f,\cp)(x_{i-1} - x_{i-2})^2}{8} \\
+				\oerr & \leftarrow \overline{\text{err}}_1 + \cdots + \overline{\text{err}}_n
+			\end{align*}
+
+\EndWhile
+
+\RETURN $T$, $\oerr$
+
+\end{algorithmic}
+\end{algorithm}
+
+\begin{thm}
+	Algorithm \ref{alg:localadapt} returns an answer that meets the error tolerance.
+	\end{thm}
+
+
+\begin{thm}
+	The computational cost of Algorithm \ref{alg:localadapt} is ???
+\end{thm}
 
 \bibliographystyle{amsplain}
 \bibliography{FJH23,FJHown23}
